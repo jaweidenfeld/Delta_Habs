@@ -1,0 +1,219 @@
+---
+title: "2023 vs 2024 cyano index at Big Break"
+output: word_document
+date: "2024-11-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Big Break
+```{r}
+
+rm(list=ls())
+
+library(tidyverse)
+
+
+
+
+setwd("C:/Users/jweidenfeld/Desktop/Rprojects/HABs")
+cyano_all<- read_csv("Big_Break/Max_Cyano_Index_Per_Month_2023_2024.csv")
+
+# Ensure the data has proper types
+cyano_all$year <- as.factor(cyano_all$year)  # Treat year as a categorical variable
+cyano_all$month <- as.factor(cyano_all$month)  # Treat month as a categorical variable
+
+
+```
+
+
+#Big Break
+```{r}
+
+ggplot(cyano_all, aes(x = month, y = Max_Cyano_Perc90, group = year, color = year)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(
+    values = c("2023" = "red", "2024" = "blue")  # Set red for 2023 and blue for 2024
+  ) +
+  labs(
+    title = "Big Break: Maximum Modified Cyano Index per Month",
+    x = "Month",
+    y = "Max Modified Cyano Index (C.I.) perc90",
+    color = "Year"
+  ) +
+  scale_x_discrete(labels = month.abb) +  # Use abbreviated month names
+  theme_minimal()
+
+
+```
+#Big Break
+
+```{r}
+
+
+ggplot(cyano_all, aes(x = month, y = Max_Cyano_Perc90, fill = year)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_fill_manual(
+    values = c("2023" = "red", "2024" = "blue")  # Set red for 2023 and blue for 2024
+  ) +
+  labs(
+    title = "Big Break: Maximum Modified Cyano Index per Month",
+    x = "Month",
+    y = "Max Modified Cyano Index (C.I.) perc90",
+    fill = "Year"
+  ) +
+  scale_x_discrete(labels = month.abb) +  # Use abbreviated month names
+  theme_minimal()
+
+```
+
+
+#Big Break 2022-2024 bar chart
+```{r}
+
+setwd("C:/Users/jweidenfeld/Desktop/Rprojects/HABs")
+
+cyano_all_bigbreak_2022_2024<- read_csv("Big_Break/Max_Cyano_Big_Break_Per_Month_2022_2024.csv")
+
+cyano_all_bigbreak_2022_2024$year <- as.factor(cyano_all_bigbreak_2022_2024$year)
+cyano_all_bigbreak_2022_2024$month <- as.factor(cyano_all_bigbreak_2022_2024$month)
+
+ggplot(cyano_all_bigbreak_2022_2024, aes(x = month, y = Max_Cyano_Perc90, fill = year)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_fill_manual(
+    values = c("2022" = "black", "2023" = "red", "2024" = "blue")  # Black for 2022, red for 2023, blue for 2024
+  ) +
+  labs(
+    title = "Big Break: Maximum Modified Cyano Index per Month",
+    x = "Month",
+    y = "Max Modified Cyano Index (C.I.) perc90",
+    fill = "Year"
+  ) +
+  scale_x_discrete(labels = month.abb) +  # Abbreviated month names
+  scale_y_continuous(limits = c(0, 300)) +  # Set y-axis range
+  theme_minimal()
+
+
+```
+
+```{r}
+
+ggplot(cyano_all_bigbreak_2022_2024, aes(x = month, y = Max_Cyano_Perc90, group = year, color = year)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(
+    values = c("2022" = "black", "2023" = "red", "2024" = "blue")  # Black for 2022, red for 2023, blue for 2024
+  ) +
+  labs(
+    title = "Big Break: Maximum Modified Cyano Index per Month",
+    x = "Month",
+    y = "Max Modified Cyano Index (C.I.) perc90",
+    color = "Year"
+  ) +
+  scale_x_discrete(labels = month.abb) +  # Abbreviated month names
+  scale_y_continuous(limits = c(0, 300)) +  # Set y-axis range
+  theme_minimal()
+
+
+
+```
+
+
+
+#Franks Tract
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+
+
+
+setwd("C:/Users/jweidenfeld/Desktop/Rprojects/HABs")
+
+cyano_frank <- read.csv("Franks_Tract/Max_Cyano_Index_Per_Month_2022_2024.csv")
+
+# Ensure the year and month are treated as categorical variables
+cyano_frank$year <- as.factor(cyano_frank$year)
+cyano_frank$month <- as.factor(cyano_frank$month)
+
+
+```
+
+#Franks Tract
+```{r}
+
+ggplot(cyano_frank, aes(x = month, y = Max_Cyano_Perc90, fill = year)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_fill_manual(
+    values = c("2022" = "black", "2023" = "red", "2024" = "blue")  # Black for 2022, red for 2023, blue for 2024
+  ) +
+  labs(
+    title = "Franks Tract: Maximum Modified Cyano Index per Month",
+    x = "Month",
+    y = "Max Modified Cyano Index (C.I.) perc90",
+    fill = "Year"
+  ) +
+  scale_x_discrete(labels = month.abb) +  # Abbreviated month names
+  theme_minimal()
+
+
+
+```
+
+```{r}
+# Line chart with custom colors
+ggplot(cyano_frank, aes(x = month, y = Max_Cyano_Perc90, group = year, color = year)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(
+    values = c("2022" = "black", "2023" = "red", "2024" = "blue")  # Black for 2022, red for 2023, blue for 2024
+  ) +
+  labs(
+    title = "Franks Tract: Maximum Modified Cyano Index per Month",
+    x = "Month",
+    y = "Max Modified Cyano Index (C.I.) perc90",
+    color = "Year"
+  ) +
+  scale_x_discrete(labels = month.abb) +  # Abbreviated month names
+  theme_minimal()
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

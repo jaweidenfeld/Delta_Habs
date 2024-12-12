@@ -1,0 +1,525 @@
+---
+title: "HABs data 2024 2023"
+output: html_document
+date: "2024-11-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+library(geojsonsf)
+library(sf)
+library(leaflet)
+library(ggspatial)
+library(webshot2)
+library(htmltools)
+library(leaflet.extras)
+library(htmlwidgets)
+
+
+
+setwd("C:/Users/jweidenfeld/Desktop")
+habs_all<-read_csv("2024_2023_HABs.csv")
+
+
+```
+
+
+#looking for duplicates in report ID (none)
+```{r}
+
+# Check if there are any duplicates in the column
+# Returns TRUE if there are duplicates, otherwise FALSE
+any(duplicated(habs_all$Bloom_Report_ID))
+
+```
+
+#change date format to remove the time (0:00)
+```{r}
+
+# Convert the Observation_Date column to Date format, removing the time part
+habs_all$Observation_Date <- as.Date(habs_all$Observation_Date, format = "%m/%d/%Y")
+
+
+```
+
+
+
+#pull out locations of HABs that are within the legal delta
+```{r}
+
+legal_delta <- geojson_sf("C:\\Users\\jweidenfeld\\Desktop\\Rprojects\\HABs\\geo_files\\legal_delta.geojson")
+
+
+# Convert HAB data to spatial points using st_as_sf
+hab_points <- st_as_sf(habs_all, coords = c("Bloom_Longitude_Corrected", "Bloom_Latitude"), crs = 4326)
+
+# Filter HAB points to include only those within the legal delta polygon that was loaded earlier
+habs_within_delta <- st_intersection(hab_points, legal_delta)
+
+# View the results
+print(habs_within_delta)
+
+
+```
+
+### I dont think this tells us useful information 
+```{r}
+
+habs_within_delta_df <- habs_within_delta %>%
+  st_coordinates() %>%
+  as.data.frame() %>%
+  cbind(habs_within_delta) %>%
+  rename(Longitude = X, Latitude = Y)
+
+# Plot using ggplot2 with jitter
+ggplot() +
+  geom_sf(data = legal_delta, fill = "lightblue", color = "blue", alpha = 0.3) +  # Plot the legal delta polygon
+  geom_point(data = habs_within_delta_df, aes(x = Longitude, y = Latitude),      # Plot HAB points with jitter
+             color = "red", size = 2, position = position_jitter(width = 0.001, height = 0.001)) +
+  theme_minimal() +
+  labs(title = "Harmful Algal Blooms within the Legal Delta (Jittered)",
+       x = "Longitude", y = "Latitude")
+```
+
+```{r}
+
+
+habs_all_2 <- read_csv("Merged_HAB_Data.csv")
+
+# Convert the Observation_Date column to Date format
+habs_all_2$Observation_Date <- as.Date(habs_all_2$Observation_Date, format = "%m/%d/%Y")
+
+# Filter out rows with missing coordinates
+habs_all_2 <- habs_all_2 %>%
+  filter(!is.na(Bloom_Longitude) & !is.na(Bloom_Latitude_y))
+
+# Convert to spatial points
+hab_points2 <- st_as_sf(habs_all_2, coords = c("Bloom_Longitude", "Bloom_Latitude_y"), crs = 4326)
+
+
+
+# Filter to include only points within the Legal Delta
+habs_within_delta2 <- st_intersection(hab_points2, st_as_sf(legal_delta))
+
+# Extract coordinates to a data frame for leaflet plotting
+habs_within_delta_df2 <- habs_within_delta2 %>%
+  st_coordinates() %>%
+  as.data.frame() %>%
+  cbind(habs_within_delta2) %>%
+  rename(Longitude = X, Latitude = Y)
+
+# Create leaflet map with filtered HAB points (Shows map of CA)
+leaflet() %>%
+  addTiles() %>%
+  setView(lng = -121.5, lat = 38.09, zoom = 8.5) %>%  # Center the map
+
+  # Adds the legal delta boundary to the map of CA
+  addPolygons(data = legal_delta, color = "blue", weight = 2, fillOpacity = 0.5, popup = "Legal Delta Boundary") %>%
+
+  # Add filtered HAB points within the Legal Delta as markers. These are points that have more accurate Lat long than the
+  #above map, which wind up being only 10 points
+  addCircleMarkers(
+    data = habs_within_delta_df2,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    radius = 3,
+    color = "red",
+    fillOpacity = 0.7,
+    popup = ~paste("Location:", Water_Body_Name, "<br> Latitude:", Latitude, "<br> Longitude:", Longitude)
+  )
+
+
+```
+#filtering for 2023 and 2024
+```{r}
+
+
+
+# Load the CSV file
+#habs_values_df_toxin <- read.csv("C:/Users/jweidenfeld/Desktop/habs_toxin_levels_unfiltered.csv")
+
+# Convert the 'sampledate' column to Date format
+#habs_values_df_toxin$SampleDate <- as.Date(habs_values_df_toxin$SampleDate, format = "%m/%d/%Y")
+
+# Filter for rows where the year is 2023 or 2024
+#filtered_toxin_df <- habs_values_df_toxin %>%
+  #filter(format(SampleDate, "%Y") %in% c("2023", "2024"))
+
+# Save the filtered data to a new CSV file
+#write.csv(filtered_toxin_df, "habs_toxin_levels_2023_2024_filtered.csv", row.names = FALSE)
+
+
+```
+
+```{r}
+# Load the filtered HAB data for 2023 and 2024
+habs_values_df_toxin <- read.csv("C:/Users/jweidenfeld/Desktop/habs_toxin_levels_2023_2024_filtered.csv")
+
+# Convert the 'SampleDate' column to Date format
+habs_values_df_toxin$SampleDate <- as.Date(habs_values_df_toxin$SampleDate, format = "%m/%d/%Y")
+
+# Ensure 'legal_delta' is loaded as an sf object (assuming it's already available in your workspace)
+
+# Filter out rows with missing coordinates in HAB data
+habs_values_df_toxin <- habs_values_df_toxin %>%
+  filter(!is.na(TargetLongitude) & !is.na(TargetLatitude))
+
+# Convert the HAB data to spatial points
+hab_points_toxin <- st_as_sf(habs_values_df_toxin, coords = c("TargetLongitude", "TargetLatitude"), crs = 4326)
+
+# Filter to include only points within the Legal Delta
+habs_within_delta_toxin <- st_intersection(hab_points_toxin, st_as_sf(legal_delta))
+
+# Check if there are any points within the delta
+if (nrow(habs_within_delta_toxin) > 0) {
+  # Extract coordinates to a data frame for Leaflet plotting
+  habs_within_delta_df_toxin <- habs_within_delta_toxin %>%
+    st_coordinates() %>%
+    as.data.frame() %>%
+    cbind(habs_within_delta_toxin) %>%
+    rename(TargetLongitude = X, TargetLatitude = Y)
+  
+  # Create a leaflet map with filtered HAB points within the legal delta
+  leaflet() %>%
+    addTiles() %>%
+    setView(lng = -121.5, lat = 38.09, zoom = 8.5) %>%  # Center the map
+    
+    # Add the legal delta boundary to the map
+    addPolygons(data = legal_delta, color = "blue", weight = 2, fillOpacity = 0.5, popup = "Legal Delta Boundary") %>%
+    
+    # Add filtered HAB points within the Legal Delta as markers
+    addCircleMarkers(
+      data = habs_within_delta_df_toxin,
+      lng = ~TargetLongitude,
+      lat = ~TargetLatitude,
+      radius = 3,
+      color = "red",
+      fillOpacity = 0.7,
+      popup = ~paste("Location:", Water_Body_Name, "<br> Latitude:", TargetLatitude, "<br> Longitude:", TargetLongitude)
+    )
+} else {
+  print("No HAB points found within the Legal Delta boundary.")
+}
+
+
+#no reported toxin levels were within the legal delta
+
+```
+
+
+#this is 2023 and 2024
+```{r}
+
+
+
+
+habs_all_3 <- read_csv("full_lat_long_2023_2024_waterboards_map_data.csv")
+
+# Convert the Observation_Date column to Date format
+habs_all_3$Observation_Date <- as.Date(habs_all_3$Observation_Date, format = "%m/%d/%Y")
+
+# Filter out rows with missing coordinates
+habs_all_3 <- habs_all_3 %>%
+  filter(!is.na(Bloom_Longitude_Corrected) & !is.na(Bloom_Latitude))
+
+# Convert to spatial points
+hab_points3 <- st_as_sf(habs_all_3, coords = c("Bloom_Longitude_Corrected", "Bloom_Latitude"), crs = 4326)
+
+
+
+# Filter to include only points within the Legal Delta
+habs_within_delta3 <- st_intersection(hab_points3, st_as_sf(legal_delta))
+
+# Extract coordinates to a data frame for leaflet plotting
+habs_within_delta_df3 <- habs_within_delta3 %>%
+  st_coordinates() %>%
+  as.data.frame() %>%
+  cbind(habs_within_delta3) %>%
+  rename(Longitude = X, Latitude = Y)
+
+print(names(habs_all_3))
+
+# Create leaflet map with filtered HAB points (Shows map of CA)
+leaflet() %>%
+  addTiles() %>%
+  setView(lng = -121.5, lat = 38.09, zoom = 8.5) %>%  # Center the map
+
+  # Adds the legal delta boundary to the map of CA
+  addPolygons(data = legal_delta, color = "blue", weight = 2, fillOpacity = 0.5, popup = "Legal Delta Boundary") %>%
+
+  # Add filtered HAB points within the Legal Delta as markers. These are points that have more accurate Lat long than the
+  #above map, which wind up being only 10 points
+  addCircleMarkers(
+    data = habs_within_delta_df3,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    radius = 3,
+    color = "red",
+    fillOpacity = 0.7,
+    popup = ~paste("Location:", Water_Body_Name, "<br> Latitude:", Latitude, "<br> Longitude:", Longitude)
+  )
+
+
+```
+
+
+```{r}
+# Load the CSV file
+habs_all_4 <- read_csv("full_lat_long_2023_2024_waterboards_map_data.csv")
+
+# Convert the Observation_Date column to Date format
+habs_all_4$Advisory_Date_of_Recommendation <- as.Date(habs_all_4$Advisory_Date_of_Recommendation, format = "%m/%d/%Y")
+
+# Extract the year from Observation_Date
+habs_all_4 <- habs_all_4 %>%
+  mutate(Year = format(Advisory_Date_of_Recommendation, "%Y"))
+
+# Filter out rows with missing coordinates
+habs_all_4 <- habs_all_4 %>%
+  filter(!is.na(Bloom_Longitude_Corrected) & !is.na(Bloom_Latitude))
+
+# Convert to spatial points
+hab_points4 <- st_as_sf(habs_all_4, coords = c("Bloom_Longitude_Corrected", "Bloom_Latitude"), crs = 4326)
+
+# Filter to include only points within the Legal Delta
+habs_within_delta4 <- st_intersection(hab_points4, st_as_sf(legal_delta))
+
+# Extract coordinates to a data frame for leaflet plotting
+habs_within_delta_df4 <- habs_within_delta4 %>%
+  st_coordinates() %>%
+  as.data.frame() %>%
+  cbind(habs_within_delta4) %>%
+  rename(Longitude = X, Latitude = Y)
+
+map_of_2023_2024 <- leaflet() %>%
+  addTiles() %>%
+  setView(lng = -121.5, lat = 38.09, zoom = 8.5) %>%
+  
+  # Adds the legal delta boundary to the map
+  addPolygons(
+    data = legal_delta, 
+    color = "blue", 
+    weight = 2, 
+    fillOpacity = 0.1, 
+    popup = "Legal Delta Boundary"
+  ) %>%
+  
+  addCircleMarkers(
+    data = habs_within_delta_df4,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    radius = 3,
+    color = ~ifelse(Year == "2024", "blue", "red"),
+    fillOpacity = 0.7,
+    popup = ~paste("Location:", Water_Body_Name, "<br> Year:", Year, "<br> Latitude:", Latitude, "<br> Longitude:", Longitude)
+  ) %>%
+  
+  addLegend(
+    position = "bottomright",
+    colors = c("blue", "red"),
+    labels = c("2024", "2023"),
+    title = "Year",
+    opacity = 0.7
+  ) %>%
+  
+  addScaleBar(
+    position = "bottomleft",
+    options = scaleBarOptions(
+      maxWidth = 200,
+      metric = TRUE,
+      imperial = TRUE,
+      updateWhenIdle = TRUE
+    )
+  ) %>%
+  
+  # Add custom CSS to make the scale bar background opaque
+  addControl(
+    tags$style(HTML("
+      .leaflet-control-scale {
+        background-color: rgba(255, 255, 255, 0.8); /* White background with 80% opacity */
+        border: 1px solid black;                  /* Optional: Add a border */
+        border-radius: 4px;                       /* Optional: Rounded corners */
+        padding: 2px;                             /* Optional: Add padding */
+      }
+    ")),
+    position = "bottomleft"
+  )
+
+map_of_2023_2024
+```
+
+#2022, 2023 and 2024
+
+```{r}
+
+# Load the CSV file
+habs_all_5 <- read_csv("full_lat_long_2022_2023_2024_waterboards_map_data.csv")
+
+# Convert the Observation_Date column to Date format
+habs_all_5$Advisory_Date_of_Recommendation <- as.Date(habs_all_5$Advisory_Date_of_Recommendation, format = "%m/%d/%Y")
+
+# Extract the year from Observation_Date
+habs_all_5 <- habs_all_5 %>%
+  mutate(Year = format(Advisory_Date_of_Recommendation, "%Y"))
+
+# Filter out rows with missing coordinates
+habs_all_5 <- habs_all_5 %>%
+  filter(!is.na(Bloom_Longitude_Corrected) & !is.na(Bloom_Latitude))
+
+# Convert to spatial points
+hab_points5 <- st_as_sf(habs_all_5, coords = c("Bloom_Longitude_Corrected", "Bloom_Latitude"), crs = 4326)
+
+# Filter to include only points within the Legal Delta
+habs_within_delta5 <- st_intersection(hab_points5, st_as_sf(legal_delta))
+
+
+
+# Jitter the points
+habs_within_delta_df5 <- habs_within_delta_df5 %>%
+  mutate(
+    Jittered_Longitude = jitter(Longitude, amount = 0.003), # Adjust `amount` as needed
+    Jittered_Latitude = jitter(Latitude, amount = 0.003)
+  )
+
+# Create the Leaflet map
+map_of_2022_2023_2024 <- leaflet() %>%
+  # Use a minimalist map with city names
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  
+  # Set the view to focus on the Delta area
+  setView(lng = -121.5, lat = 38.09, zoom = 8.5) %>%
+  
+  # Add the legal delta boundary with green outline
+  addPolygons(
+    data = legal_delta, 
+    color = "green", 
+    weight = 2, 
+    fillOpacity = 0.1, 
+    popup = "Legal Delta Boundary"
+  ) %>%
+  
+  # Add jittered circle markers for each year with black outline and transparent fill
+  addCircleMarkers(
+    data = habs_within_delta_df5,
+    lng = ~Jittered_Longitude,
+    lat = ~Jittered_Latitude,
+    radius = 6, # Slightly larger radius for better visibility
+    color = "black", # Black outline
+    stroke = TRUE, # Enable outline
+    weight = 1, # Thin outline
+    fillColor = ~ifelse(Year == "2024", "rgba(0, 0, 255, 0.5)", 
+                        ifelse(Year == "2023", "rgba(255, 0, 0, 0.5)", 
+                               "rgba(0, 0, 0, 0.5)")), # Transparent fill color
+    fillOpacity = 0.9, # Adjust transparency level
+    popup = ~paste("Location:", Water_Body_Name, "<br> Year:", Year, "<br> Latitude:", Latitude, "<br> Longitude:", Longitude)
+  ) %>%
+  
+  # Add a legend for the years
+  addLegend(
+    position = "bottomright",
+    colors = c("blue", "red", "black"),
+    labels = c("2024", "2023", "2022"),
+    title = "Year",
+    opacity = 0.7
+  ) 
+
+# Display the map
+map_of_2022_2023_2024
+
+
+
+```
+
+#attempting to save a high resoultion image: computer can not handle it: times out every time
+```{r}
+#saveWidget(map_of_2023_2024, "map_of_2023_2024.html")
+
+#webshot("map_of_2023_2024.html", 
+ #       file = "map_of_2023_2024.png", 
+  #      vwidth = 1920, 
+   #     vheight = 1080, 
+    #    zoom = 4)
+
+
+
+```
+
+#same map as above but without the scale bar
+```{r}
+map_of_2023_2024_no_scale <- leaflet() %>%
+  addTiles() %>%
+  setView(lng = -121.5, lat = 38.09, zoom = 8.5) %>%
+  
+  # Adds the legal delta boundary to the map
+  addPolygons(
+    data = legal_delta, 
+    color = "blue", 
+    weight = 2, 
+    fillOpacity = 0.1, 
+    popup = "Legal Delta Boundary"
+  ) %>%
+  
+  addCircleMarkers(
+    data = habs_within_delta_df4,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    radius = 3,
+    color = ~ifelse(Year == "2024", "blue", "red"),
+    fillOpacity = 0.7,
+    popup = ~paste("Location:", Water_Body_Name, "<br> Year:", Year, "<br> Latitude:", Latitude, "<br> Longitude:", Longitude)
+  ) %>%
+  
+  addLegend(
+    position = "bottomright",
+    colors = c("blue", "red"),
+    labels = c("2024", "2023"),
+    title = "Year",
+    opacity = 0.7
+  ) 
+  
+
+
+map_of_2023_2024_no_scale
+
+
+
+```
+
+
+```{r}
+
+# Convert 'bloom_date_created' to date-time format and extract the year
+habs_within_delta_df5 <- habs_within_delta_df5 %>%
+  mutate(
+    Advisory_Date_of_Recommendation = as.POSIXct(Advisory_Date_of_Recommendation, format = "%Y/%m/%d"),  # Convert to date-time format
+    Year = format(Advisory_Date_of_Recommendation, "%Y")  # Extract the year as a new column
+  )
+
+
+# Count the number of entries for each year
+year_counts <- habs_within_delta_df5 %>%
+  group_by(Year) %>%
+  summarise(count = n())
+
+# Display the counts
+print(year_counts)
+
+
+```
+
+
+```{r}
+
+
+
+```
+
+
+
+
