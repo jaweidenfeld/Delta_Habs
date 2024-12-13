@@ -23,8 +23,7 @@ library(htmlwidgets)
 
 
 
-setwd("C:/Users/jweidenfeld/Desktop")
-habs_all<-read_csv("/data/2024_2023_HABs.csv")
+habs_all<-read_csv("../data/2024_2023_HABs.csv")
 
 
 ```
@@ -53,7 +52,7 @@ habs_all$Observation_Date <- as.Date(habs_all$Observation_Date, format = "%m/%d/
 #pull out locations of HABs that are within the legal delta
 ```{r}
 
-legal_delta <- geojson_sf("C:\\Users\\jweidenfeld\\Desktop\\Rprojects\\HABs\\geo_files\\legal_delta.geojson")
+legal_delta <- geojson_sf("..\\geo_files\\legal_delta.geojson")
 
 
 # Convert HAB data to spatial points using st_as_sf
@@ -90,7 +89,8 @@ ggplot() +
 ```{r}
 
 
-habs_all_2 <- read_csv("Merged_HAB_Data.csv")
+habs_all_2 <- read_csv("../data/Merged_HAB_Data.csv")
+
 
 # Convert the Observation_Date column to Date format
 habs_all_2$Observation_Date <- as.Date(habs_all_2$Observation_Date, format = "%m/%d/%Y")
@@ -159,7 +159,7 @@ leaflet() %>%
 
 ```{r}
 # Load the filtered HAB data for 2023 and 2024
-habs_values_df_toxin <- read.csv("C:/Users/jweidenfeld/Desktop/habs_toxin_levels_2023_2024_filtered.csv")
+habs_values_df_toxin <- read.csv("../data/habs_toxin_levels_2023_2024_filtered.csv")
 
 # Convert the 'SampleDate' column to Date format
 habs_values_df_toxin$SampleDate <- as.Date(habs_values_df_toxin$SampleDate, format = "%m/%d/%Y")
@@ -219,7 +219,7 @@ if (nrow(habs_within_delta_toxin) > 0) {
 
 
 
-habs_all_3 <- read_csv("full_lat_long_2023_2024_waterboards_map_data.csv")
+habs_all_3 <- read_csv("../data/full_lat_long_2023_2024_waterboards_map_data.csv")
 
 # Convert the Observation_Date column to Date format
 habs_all_3$Observation_Date <- as.Date(habs_all_3$Observation_Date, format = "%m/%d/%Y")
@@ -271,7 +271,7 @@ leaflet() %>%
 
 ```{r}
 # Load the CSV file
-habs_all_4 <- read_csv("full_lat_long_2023_2024_waterboards_map_data.csv")
+habs_all_4 <- read_csv("../data/full_lat_long_2023_2024_waterboards_map_data.csv")
 
 # Convert the Observation_Date column to Date format
 habs_all_4$Advisory_Date_of_Recommendation <- as.Date(habs_all_4$Advisory_Date_of_Recommendation, format = "%m/%d/%Y")
@@ -358,8 +358,12 @@ map_of_2023_2024
 
 ```{r}
 
+library(sf)
+library(dplyr)
+library(leaflet)
+
 # Load the CSV file
-habs_all_5 <- read_csv("full_lat_long_2022_2023_2024_waterboards_map_data.csv")
+habs_all_5 <- read_csv("../data/full_lat_long_2022_2023_2024_waterboards_map_data.csv")
 
 # Convert the Observation_Date column to Date format
 habs_all_5$Advisory_Date_of_Recommendation <- as.Date(habs_all_5$Advisory_Date_of_Recommendation, format = "%m/%d/%Y")
@@ -378,21 +382,23 @@ hab_points5 <- st_as_sf(habs_all_5, coords = c("Bloom_Longitude_Corrected", "Blo
 # Filter to include only points within the Legal Delta
 habs_within_delta5 <- st_intersection(hab_points5, st_as_sf(legal_delta))
 
-
+# Extract coordinates to data frame
+habs_within_delta_df5 <- habs_within_delta5 %>%
+  mutate(
+    Longitude = st_coordinates(.)[, 1],
+    Latitude = st_coordinates(.)[, 2]
+  )
 
 # Jitter the points
 habs_within_delta_df5 <- habs_within_delta_df5 %>%
   mutate(
-    Jittered_Longitude = jitter(Longitude, amount = 0.003), # Adjust `amount` as needed
+    Jittered_Longitude = jitter(Longitude, amount = 0.003),
     Jittered_Latitude = jitter(Latitude, amount = 0.003)
   )
 
 # Create the Leaflet map
 map_of_2022_2023_2024 <- leaflet() %>%
-  # Use a minimalist map with city names
   addProviderTiles(providers$CartoDB.Positron) %>% 
-  
-  # Set the view to focus on the Delta area
   setView(lng = -121.5, lat = 38.09, zoom = 8.5) %>%
   
   # Add the legal delta boundary with green outline
@@ -404,19 +410,19 @@ map_of_2022_2023_2024 <- leaflet() %>%
     popup = "Legal Delta Boundary"
   ) %>%
   
-  # Add jittered circle markers for each year with black outline and transparent fill
+  # Add jittered circle markers for each year
   addCircleMarkers(
     data = habs_within_delta_df5,
     lng = ~Jittered_Longitude,
     lat = ~Jittered_Latitude,
-    radius = 6, # Slightly larger radius for better visibility
-    color = "black", # Black outline
-    stroke = TRUE, # Enable outline
-    weight = 1, # Thin outline
+    radius = 6, 
+    color = "black", 
+    stroke = TRUE, 
+    weight = 1, 
     fillColor = ~ifelse(Year == "2024", "rgba(0, 0, 255, 0.5)", 
                         ifelse(Year == "2023", "rgba(255, 0, 0, 0.5)", 
-                               "rgba(0, 0, 0, 0.5)")), # Transparent fill color
-    fillOpacity = 0.9, # Adjust transparency level
+                               "rgba(0, 0, 0, 0.5)")),
+    fillOpacity = 0.9, 
     popup = ~paste("Location:", Water_Body_Name, "<br> Year:", Year, "<br> Latitude:", Latitude, "<br> Longitude:", Longitude)
   ) %>%
   
@@ -427,10 +433,11 @@ map_of_2022_2023_2024 <- leaflet() %>%
     labels = c("2024", "2023", "2022"),
     title = "Year",
     opacity = 0.7
-  ) 
+  )
 
 # Display the map
 map_of_2022_2023_2024
+
 
 
 
